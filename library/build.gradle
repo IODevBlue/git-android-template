@@ -8,11 +8,11 @@ plugins {
 
 android {
     namespace '-'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 21
-        targetSdk 33
+        targetSdk 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -28,13 +28,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     publishing {
         singleVariant("release")
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 def releaseVersion = '1.0.0'
@@ -51,7 +52,7 @@ afterEvaluate {
                 artifact androidSourcesJar
                 artifact androidJar
                 pom {
-                    name = '---'
+                    name = "$rootProject.name"
                     description = ':repo'
                     url = 'https://github.com/IODevBlue/:repo.git'
                     packaging = 'jar'
@@ -103,7 +104,7 @@ afterEvaluate {
 
 
 dokkaHtml {
-    moduleName.set("---")
+    moduleName.set(rootProject.name)
     suppressInheritedMembers.set(true)
     offlineMode.set(true)
     dokkaSourceSets {
@@ -113,49 +114,78 @@ dokkaHtml {
     }
 }
 
-task androidSourcesJar(type: Jar) {
+dokkaJavadoc {
+    moduleName.set(rootProject.name)
+    suppressInheritedMembers.set(true)
+    offlineMode.set(true)
+    dokkaSourceSets {
+        configureEach {
+            includes.from("module.md")
+        }
+    }
+}
+
+tasks.register('androidSourcesJar', Jar) {
     getArchiveClassifier().set('sources')
     from android.sourceSets.main.kotlin.srcDirs
     doLast {
         copy {
             from androidSourcesJar
-            into "$rootProject.projectDir/artefacts/$releaseVersion"
+            rename("$moduleID" + "-sources.jar", "$moduleID-$releaseVersion" + "-sources.jar")
+            into "$rootProject.projectDir/artefacts/$moduleID/$releaseVersion"
         }
     }
 }
 
-task androidJavadocJar(type: Jar, dependsOn: dokkaJavadoc) {
+tasks.register('androidJavadocJar', Jar) {
+    dependsOn dokkaJavadoc
     getArchiveClassifier().set('javadoc')
     from dokkaJavadoc
     doLast {
         copy {
             from androidJavadocJar
-            into "$rootProject.projectDir/artefacts/$releaseVersion"
+            rename("$moduleID" + "-javadoc.jar", "$moduleID-$releaseVersion" + "-javadoc.jar")
+            into "$rootProject.projectDir/artefacts/$moduleID/$releaseVersion"
         }
     }
 }
 
-task androidJar(type: Jar) {
+tasks.register('androidJar', Jar) {
     def path = "build/intermediates/full_jar/release/full.jar"
-    def file = getRootProject().project(":artifact").file(new File(path))
+    def file = getRootProject().project("$moduleID").file(new File(path))
     if (!file.exists()) {
-        println("ERROR: :artifact:- Run the createFullJarRelease task first to create the jar file.")
+        println("ERROR: $moduleID:- Run the createFullJarRelease task first to create the jar file.")
         return
     }
     from zipTree(file)
     doLast {
         copy {
             from androidJar
-            into "$rootProject.projectDir/artefacts/$releaseVersion"
+            rename("$moduleID" + ".jar", "$moduleID-$releaseVersion" + ".jar")
+            into "$rootProject.projectDir/artefacts/$moduleID/$releaseVersion"
         }
     }
 }
 
+tasks.register('copyHtmlDoc', Copy) {
+    dependsOn dokkaHtml
+    from "build/dokka/html"
+    into "/Users/iodevblue/Documents/Github-Projects/project-docs/api/android/$moduleID/html"
+}
+
+tasks.register('copyJavadoc', Copy) {
+    dependsOn dokkaJavadoc
+    from "build/dokka/javadoc"
+    into "/Users/iodevblue/Documents/Github-Projects/project-docs/api/android/$moduleID/javadoc"
+}
+
 dependencies {
-    implementation 'androidx.core:core-ktx:1.10.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation "androidx.core:core-ktx:$core_ktx"
+    implementation "androidx.appcompat:appcompat:$app_compat"
+    implementation "com.google.android.material:material:$material"
+    
     testImplementation 'junit:junit:4.13.2'
+
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
