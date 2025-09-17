@@ -5,14 +5,19 @@ pluginManagement {
         mavenCentral()
     }
 }
+
+@Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-	mavenLocal()
+        maven("https://maven.google.com")
+        maven("https://jitpack.io")
+        maven("https://plugins.gradle.org/m2/")
     }
 }
+
 rootProject.name = "-"
-include ':sample'
-include ':library'
+include("*library")
+include(":sample")
